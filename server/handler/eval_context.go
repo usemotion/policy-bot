@@ -149,7 +149,7 @@ func (ec *EvalContext) EvaluatePolicy(ctx context.Context, evaluator common.Eval
 	case common.StatusDisapproved:
 		statusState = "failure"
 	case common.StatusPending:
-		statusState = "pending"
+		statusState = "failure"
 	case common.StatusSkipped:
 		statusState = "error"
 		statusDescription = "All rules were skipped. At least one rule must match."
