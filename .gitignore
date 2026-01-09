@@ -15,3 +15,6 @@ gotest.out
 
 # default config location
 config/policy-bot.yml
+.opencode
+
+.claude/settings.local.json
