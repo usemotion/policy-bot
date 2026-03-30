@@ -31,6 +31,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 var defaultOptions = Options{
 	Methods: DefaultMethods(),
 }
@@ -1243,7 +1247,7 @@ func TestCodeownerGroupApproval(t *testing.T) {
 		r := &Rule{
 			Options: Options{
 				Methods:     DefaultMethods(),
-				AllowAuthor: ptr(false),
+				AllowAuthor: new(false),
 			},
 			Requires: Requires{
 				Actors: common.Actors{Codeowners: true},
