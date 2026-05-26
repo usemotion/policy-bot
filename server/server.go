@@ -48,8 +48,11 @@ const (
 	DefaultWebhookWorkers   = 10
 	DefaultWebhookQueueSize = 100
 
-	DefaultHTTPCacheSize     = 50 * datasize.MB
-	DefaultPushedAtCacheSize = 100_000
+	DefaultHTTPCacheSize       = 50 * datasize.MB
+	DefaultPushedAtCacheSize   = 100_000
+	DefaultCodeownersCacheSize = 10_000
+	DefaultMembershipCacheSize = 10_000
+	DefaultTeamsCacheSize      = 1_000
 )
 
 type Server struct {
@@ -138,15 +141,17 @@ func New(c *Config) (*Server, error) {
 		return nil, errors.Wrap(err, "failed to get configured GitHub app")
 	}
 
-	pushedAtSize := c.Cache.PushedAtSize
-	if pushedAtSize == 0 {
-		pushedAtSize = DefaultPushedAtCacheSize
-	}
+	pushedAtSize := cacheSize(c.Cache.PushedAtSize, DefaultPushedAtCacheSize)
+	codeownersSize := cacheSize(c.Cache.CodeownersSize, DefaultCodeownersCacheSize)
+	membershipSize := cacheSize(c.Cache.MembershipSize, DefaultMembershipCacheSize)
+	teamsSize := cacheSize(c.Cache.TeamsSize, DefaultTeamsCacheSize)
 
-	globalCache, err := pull.NewLRUGlobalCache(pushedAtSize)
+	globalCache, err := pull.NewLRUGlobalCache(pushedAtSize, codeownersSize, membershipSize, teamsSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize global cache")
 	}
+
+	seenPolicyCache := handler.NewSeenPolicyCache()
 
 	policyPaths := []string{c.Options.PolicyPath}
 	if c.Options.ForceSharedPolicy {
@@ -170,6 +175,7 @@ func New(c *Config) (*Server, error) {
 				policyPaths,
 				appconfig.WithOwnerDefault(*c.Options.SharedRepository, sharedPolicyPaths),
 			),
+			SeenPolicyCache: seenPolicyCache,
 		},
 
 		AppName: app.GetSlug(),
@@ -286,4 +292,12 @@ func (s *Server) Start() error {
 		}
 	}
 	return s.base.Start()
+}
+
+// cacheSize returns the configured size or the default if not set.
+func cacheSize(configured, defaultSize int) int {
+	if configured > 0 {
+		return configured
+	}
+	return defaultSize
 }

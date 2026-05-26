@@ -38,12 +38,17 @@ type Actors struct {
 	// A list of GitHub collaborator permissions that are allowed. Values may
 	// be any of "admin", "maintain", "write", "triage", and "read".
 	Permissions []pull.Permission `yaml:"permissions,omitempty" json:"permissions"`
+
+	// Codeowners specifies that codeowners of changed files are allowed actors.
+	// If true, users who are listed as codeowners of any changed file in the
+	// CODEOWNERS file can satisfy this actor requirement.
+	Codeowners bool `yaml:"codeowners,omitempty" json:"codeowners"`
 }
 
 // IsZero returns true if no conditions for actors are defined.
 func (a *Actors) IsZero() bool {
 	return a == nil || (len(a.Users) == 0 && len(a.Teams) == 0 && len(a.Organizations) == 0 &&
-		len(a.Permissions) == 0 && !a.Admins && !a.WriteCollaborators)
+		len(a.Permissions) == 0 && !a.Admins && !a.WriteCollaborators && !a.Codeowners)
 }
 
 // GetPermissions returns unique permissions ordered from most to least
@@ -115,5 +120,45 @@ func (a *Actors) IsActor(ctx context.Context, prctx pull.Context, user string) (
 		}
 	}
 
+	if a.Codeowners {
+		isOwner, err := a.isCodeowner(prctx, user)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to check codeowner status")
+		}
+		if isOwner {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// isCodeowner checks if the user is a codeowner of any changed file.
+func (a *Actors) isCodeowner(prctx pull.Context, user string) (bool, error) {
+	co, err := prctx.Codeowners()
+	if err != nil {
+		return false, err
+	}
+	if co == nil {
+		return false, nil
+	}
+
+	for _, owner := range co.AllOwners() {
+		ownerType, name := pull.ParseCodeowner(owner)
+		switch ownerType {
+		case "user":
+			if user == name {
+				return true, nil
+			}
+		case "team":
+			isMember, err := prctx.IsTeamMember(name, user)
+			if err != nil {
+				return false, errors.Wrapf(err, "failed to check team membership for %s", name)
+			}
+			if isMember {
+				return true, nil
+			}
+		}
+	}
 	return false, nil
 }

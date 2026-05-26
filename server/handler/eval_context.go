@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v85/github"
 	"github.com/palantir/policy-bot/policy"
 	"github.com/palantir/policy-bot/policy/common"
 	"github.com/palantir/policy-bot/pull"
@@ -78,9 +78,13 @@ func (ec *EvalContext) ParseConfig(ctx context.Context, trigger common.Trigger) 
 	switch {
 	case fc.LoadError != nil:
 		msg := fmt.Sprintf("Error loading policy from %s", fc.Source)
-		logger.Warn().Err(fc.LoadError).Msg(msg)
+		logger.Warn().Err(fc.LoadError).Bool("seen_policy", fc.SeenPolicy).Msg(msg)
 
-		ec.PostStatus(ctx, "error", msg)
+		// If policy-bot has never seen a policy file for this base branch
+		// then suppress the failing status.
+		if fc.SeenPolicy {
+			ec.PostStatus(ctx, "error", msg)
+		}
 		return nil, errors.Wrapf(fc.LoadError, "failed to load policy: %s: %s", fc.Source, fc.Path)
 
 	case fc.ParseError != nil:
@@ -145,7 +149,7 @@ func (ec *EvalContext) EvaluatePolicy(ctx context.Context, evaluator common.Eval
 	case common.StatusDisapproved:
 		statusState = "failure"
 	case common.StatusPending:
-		statusState = "pending"
+		statusState = "failure"
 	case common.StatusSkipped:
 		statusState = "error"
 		statusDescription = "All rules were skipped. At least one rule must match."
@@ -183,14 +187,13 @@ func (ec *EvalContext) PostStatus(ctx context.Context, state, message string) {
 	owner := ec.PullContext.RepositoryOwner()
 	repo := ec.PullContext.RepositoryName()
 	sha := ec.PullContext.HeadSHA()
-	base, _ := ec.PullContext.Branches()
 
 	publicURL := strings.TrimSuffix(ec.PublicURL, "/")
 	detailsURL := fmt.Sprintf("%s/details/%s/%s/%d", publicURL, owner, repo, ec.PullContext.Number())
 
 	status := github.RepoStatus{
 		State:       &state,
-		Context:     new(fmt.Sprintf("%s: %s", ec.Options.StatusCheckContext, base)),
+		Context:     github.Ptr(fmt.Sprintf("%s", ec.Options.StatusCheckContext)),
 		Description: &message,
 		TargetURL:   &detailsURL,
 	}

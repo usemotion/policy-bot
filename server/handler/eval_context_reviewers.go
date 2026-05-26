@@ -20,7 +20,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v85/github"
 	"github.com/palantir/policy-bot/policy/common"
 	"github.com/palantir/policy-bot/policy/reviewer"
 	"github.com/palantir/policy-bot/pull"
@@ -104,10 +104,12 @@ func (ec *EvalContext) requestReviews(ctx context.Context, reqs []*common.Result
 	}
 	for _, r := range reviews {
 		if r.SHA == head {
-			reviewers = append(reviewers, &pull.Reviewer{
-				Type: pull.ReviewerUser,
-				Name: r.Author,
-			})
+			if r.Author != nil && r.Author.Login != "" {
+				reviewers = append(reviewers, &pull.Reviewer{
+					Type: pull.ReviewerUser,
+					Name: r.Author.Login,
+				})
+			}
 
 			for _, team := range r.Teams {
 				reviewers = append(reviewers, &pull.Reviewer{

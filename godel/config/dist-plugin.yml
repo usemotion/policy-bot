@@ -7,7 +7,7 @@ products:
     build:
       output-dir: build
       main-pkg: .
-      version-var: github.com/palantir/policy-bot/version.version
+      version-var: develop.version
       environment:
         CGO_ENABLED: "0"
       os-archs:
@@ -41,8 +41,6 @@ products:
             cp -R docker/* ${CONTEXT_DIR}
             cp -R config ${CONTEXT_DIR}
           tag-templates:
-            version: "{{Repository}}palantirtechnologies/policy-bot:{{Version}}"
-            latest: "{{Repository}}palantirtechnologies/policy-bot:latest"
-            snapshot: "{{Repository}}palantirtechnologies/policy-bot:snapshot"
+            version: "{{Repository}}us-central1-docker.pkg.dev/gcp-motion-mgmt/external/policy-bot:{{Version}}"
     publish:
-      group-id: com.palantir.policy-bot
+      group-id: com.palantir.policy-bo22838

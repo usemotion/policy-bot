@@ -17,7 +17,7 @@ package handler
 import (
 	"context"
 
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v85/github"
 	"github.com/palantir/go-baseapp/baseapp"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/palantir/policy-bot/policy/common"
@@ -69,7 +69,7 @@ func (b *Base) NewEvalContext(ctx context.Context, installationID int64, loc pul
 		return nil, err
 	}
 
-	mbrCtx := NewCrossOrgMembershipContext(ctx, client, loc.Owner, b.Installations, b.ClientCreator)
+	mbrCtx := NewCrossOrgMembershipContext(ctx, client, loc.Owner, b.Installations, b.ClientCreator, b.GlobalCache)
 	prctx, err := pull.NewGitHubContext(ctx, mbrCtx, b.GlobalCache, client, v4client, loc)
 	if err != nil {
 		return nil, err
